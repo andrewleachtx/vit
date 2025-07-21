@@ -1,0 +1,25 @@
+[project]
+name = "vit"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Andrew Leach",email = "you@example.com"}
+]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "typer (>=0.16.0,<0.17.0)",
+    "gitpython (>=3.1.44,<4.0.0)",
+    "fastapi (>=0.116.1,<0.117.0)",
+    "jinja2 (>=3.1.6,<4.0.0)",
+    "uvicorn (>=0.35.0,<0.36.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+vit = "vit.cli:app"
