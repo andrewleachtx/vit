@@ -25,20 +25,18 @@ def findGitRoot() -> Path:
 
 def initConfig(overwrite=False):
     """
-    1. Search for the git project root
-    2. Build the .vit/ directory at that location
-    3. Create the config.json with our default config
-    4. Create skeleton for timeline.json, as well as media/
+    Helper that initializes the config files (config.json and timeline.json) and
+    
     """
 
-    # 1)
+    # 1) Search for the git project root
     repoPath = findGitRoot()
 
-    # 2)
+    # 2) Build the .vit/ directory at that location
     vitDir = repoPath/DEFAULT_CONFIG["storageDir"]
     vitDir.mkdir(exist_ok=True)
 
-    # 3)
+    # 3) Create the config.json with our default config
     configPath = vitDir / "config.json"
     configToWrite = {
         **DEFAULT_CONFIG,
@@ -57,7 +55,7 @@ def initConfig(overwrite=False):
         configPath.write_text(json.dumps(configToWrite, indent=2))
         typer.secho(f"Wrote config to {configPath}", fg=typer.colors.GREEN)
 
-    # 4)
+    # 4) Create skeleton for timeline.json, as well as media/
     timelinePath = vitDir / DEFAULT_CONFIG["timelineFile"]
     if timelinePath.exists():
         if overwrite:

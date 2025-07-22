@@ -7,7 +7,7 @@ import typer
 from vit.config import initConfig, loadConfig
 from pathlib import Path
 
-from vit.utils import makeClickableFileLink
+from vit.utils import makeClickableFileLink, getDirSize, bytesToHuman
 
 app = typer.Typer()
 
@@ -128,7 +128,7 @@ def timeline(
         typer.secho(f" @ {prettyDate}")
 
         if parents.strip():
-            typer.secho(f"Parents: {parents[:7]}", fg=typer.colors.CYAN)
+            typer.secho(f"Parent Commit(s): {parents[:7]}", fg=typer.colors.CYAN)
 
         attachments = timelineData.get(hash, [])
         if attachments:
@@ -140,6 +140,32 @@ def timeline(
                 typer.echo(f"\t- {linkText} ({fileUrl})")
         
         typer.echo()
+
+@app.command()
+def overhead():
+    """
+    Returns how much disk .vit/ is using, including media.
+    """
+
+    config = loadConfig()
+    vitDir = config.storageDir
+    mediaDir = vitDir / config.mediaSubdir
+
+    if not vitDir.exists():
+        typer.secho("No .vit/ directory found, run `vit init` first.", fg=typer.colors.RED)
+    
+    totalVitSize = getDirSize(vitDir)
+    mediaSize = getDirSize(mediaDir)
+    metaSize = totalVitSize - mediaSize
+
+    typer.secho("Total .vit/ size (with directory sizes): ", fg=typer.colors.GREEN, nl=False)
+    typer.secho(bytesToHuman(totalVitSize), fg=typer.colors.CYAN, nl=False)
+
+    typer.echo(" (", nl=False)
+    typer.secho(f"Metadata: {bytesToHuman(metaSize)}", fg=typer.colors.MAGENTA, nl=False)
+    typer.echo(", ", nl=False)
+    typer.secho(f"Media: {bytesToHuman(mediaSize)}", fg=typer.colors.BLUE, nl=False)
+    typer.echo(")")
 
 if __name__ == "__main__":
     app()
