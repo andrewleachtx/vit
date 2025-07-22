@@ -3,7 +3,7 @@ name = "vit"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "Andrew Leach",email = "you@example.com"}
+    {name = "Andrew Leach", email = "you@example.com"}
 ]
 license = "MIT"
 readme = "README.md"

@@ -1,3 +1,6 @@
+import datetime
+import json
+import shutil
 import subprocess
 from git import Repo
 import typer
@@ -41,16 +44,47 @@ def commit(
     config = loadConfig()
 
     # Actually run git commit
-    # try:
-    #     subprocess.run(f"git commit -m {message}".split(), check=True)
-    # except subprocess.CalledProcessError as e:
-    #     typer.secho(f"Git commit failed: {e}", fg=typer.colors.RED)
-    #     raise typer.Exit(code=1)
+    try:
+        subprocess.run(f"git commit -m {message}".split(), check=True)
+    except subprocess.CalledProcessError as e:
+        typer.secho(f"Git commit failed: {e}", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
     
     repo = Repo(config.repoPath)
     commitHash = repo.head.commit.hexsha[:7]
-    print(f"Commit hash: {commitHash}")
+    typer.secho(f"Committed as {commitHash}", fg=typer.colors.GREEN)
 
+    # Search for attachments and attach them
+    paths = []
+    if attach:
+        mediaDir = config.storageDir / config.mediaSubdir
+        dstDir = mediaDir / commitHash
+        dstDir.mkdir(parents=True, exist_ok=True)
+
+        for src in attach:
+            # TODO: metadata https://docs.python.org/3/library/shutil.html
+            shutil.copy(src, dstDir / src.name)
+            paths.append(str(Path(config.mediaSubdir) / commitHash / src.name))
+
+        typer.secho(f"Attached {len(attach)} file(s) to {dstDir}", fg=typer.colors.GREEN)
+    
+    # Update the timeline
+    timelinePath = config.storageDir / config.timelineFile
+    try:
+        timeline = json.loads(timelinePath.read_text())
+    except json.JSONDecodeError:
+        timeline = []
+
+    entry = {
+        "commit" : commitHash,
+        "message" : message,
+        "time" : datetime.datetime.now().isoformat(),
+        "attachments" : paths
+    }
+
+    timeline.append(entry)
+    timelinePath.write_text(json.dumps(timeline, indent=2))
+    typer.secho(f"Updated timeline at {timelinePath}", fg=typer.colors.GREEN)
 
 if __name__ == "__main__":
     app()
