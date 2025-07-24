@@ -209,7 +209,28 @@ def undo(
         typer.secho("Aborted `vit undo`", fg=typer.colors.CYAN)
         raise typer.Exit(code=0)
     
-    # for h in lastHashes:
+    # Actually git reset
+    try:
+        subprocess.run(
+            ["git", "reset", f"--{mode}", f"HEAD~{number}"],
+            check=True
+        )
+    except subprocess.CalledProcessError as e:
+        typer.secho(f"Failed `git reset`: {e}", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    
+    # Remove hashes and their data
+    mediaDir = config.storageDir / config.mediaSubdir
+    for h in lastHashes:
+        if h in timelineData:
+            h = "d2ac47a"
+            folder = mediaDir / h
+            if folder.exists():
+                shutil.rmtree(folder)
+            timelineData.pop(h)
+
+    timelinePath.write_text(json.dumps(timelineData, indent=2))
+    typer.secho(f"Successfully deleted {number} commits.", fg=typer.colors.GREEN)
 
 @app.command()
 def modify():
