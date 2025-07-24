@@ -67,7 +67,7 @@ def commit(
         dstDir.mkdir(parents=True, exist_ok=True)
 
         for src in attach:
-            # TODO: metadata https://docs.python.org/3/library/shutil.html
+            # FIXME: metadata not fully copied https://docs.python.org/3/library/shutil.html
             shutil.copy(src, dstDir / src.name)
             paths.append(str(Path(config.mediaSubdir) / commitHash / src.name))
 
@@ -104,11 +104,14 @@ def timeline(
     timelinePath = config.storageDir / config.timelineFile
 
     timelineData = {}
-    if timelinePath:
+    if timelinePath.exists():
         entries = json.loads(timelinePath.read_text())
         timelineData = {
             entry["commit"] : entry.get("attachments", []) for entry in entries
         }
+    else:
+        typer.secho(f"Failed to locate timeline path \"{timelinePath}\", have you run `vit init`?", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
 
     fmt = f"%h|%cI|%s|%P"
     rawOutput = subprocess.check_output(
@@ -123,7 +126,7 @@ def timeline(
         formattedDate = datetime.strptime(isoDate, "%Y-%m-%dT%H:%M:%S%z")
         prettyDate = formattedDate.strftime("%b %d, %Y %I:%M %p")
 
-        typer.secho(f"commit {hash}: ", fg=typer.colors.YELLOW, nl=False)
+        typer.secho(f"commit [{hash}]: ", fg=typer.colors.YELLOW, nl=False)
         typer.secho(f"\"{message}\"", fg=typer.colors.GREEN, nl=False)
         typer.secho(f" @ {prettyDate}")
 
@@ -166,6 +169,73 @@ def overhead():
     typer.echo(", ", nl=False)
     typer.secho(f"Media: {bytesToHuman(mediaSize)}", fg=typer.colors.BLUE, nl=False)
     typer.echo(")")
+
+@app.command()
+def undo(
+    number: int = typer.Option(1, "--number", "-n", help="Number of commits to undo"),
+    mode: str = typer.Option("mixed", "--mode", help="Reset mode, i.e. soft, mixed, or hard (like `git reset`).")
+):
+    """
+    Undo the last `number` commit(s), which rolls back both git and the vit media/timeline as if it never happened.
+
+    By default, does --mixed, otherwise can do --soft or --hard.
+    """
+    config = loadConfig()
+    repoPath = config.repoPath
+    timelinePath = config.storageDir / config.timelineFile
+
+    timelineData = {}
+    if timelinePath.exists():
+        entries = json.loads(timelinePath.read_text())
+        timelineData = {
+            entry["commit"] : entry.get("attachments", []) for entry in entries
+        }
+    else:
+        typer.secho(f"Failed to locate timeline path, have you run `vit init`?", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    
+    # We shouldn't undo n commits from our timeline, but n git commits -- of them, remove from our timeline any that also show up.
+    lastHashes = []
+    try:
+        raw = subprocess.check_output(
+            ["git", "log", f"-n{number}", "--pretty=format:%h"],
+            cwd=repoPath, text=True
+        )
+        lastHashes = raw.splitlines()
+    except subprocess.CalledProcessError as e:
+        typer.secho(f"Failed `git log`: {e}", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    
+    if number != len(lastHashes):
+        typer.secho(f"Only found {len(lastHashes)} commits; --number was {number}", fg=typer.colors.RED)
+        raise typer.Exit(1)
+
+    typer.secho(f"Undoing these Git commit(s):", fg=typer.colors.YELLOW)
+    for h in lastHashes:
+        typer.secho(f"\t [{h}]", fg=typer.colors.YELLOW)
+
+    if not typer.confirm("Proceed with `git reset --{mode} HEAD~{number}`?"):
+        typer.secho("Aborted `vit undo`", fg=typer.colors.CYAN)
+        raise typer.Exit(code=0)
+    
+    for h in lastHashes:
+
+@app.command()
+def modify():
+    """
+    TODO:
+    
+    Attach/detach images to an arbitrary commit. This will have to linear search for the correct spot in our json file,
+    which may be very slow as we don't store time.
+    """
+
+@app.command()
+def graph():
+    """
+    TODO:
+
+    Visualizes timeline including commits not in timeline.json
+    """
 
 if __name__ == "__main__":
     app()
