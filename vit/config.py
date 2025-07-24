@@ -65,7 +65,7 @@ def initConfig(overwrite=False):
         else:
             typer.secho(f"Already initialized at {timelinePath}, ignoring. Add --overwrite to delete your existing timeline data and reinit!", fg=typer.colors.YELLOW)
     if not timelinePath.exists() or overwrite:
-        timelinePath.write_text("[]")
+        timelinePath.write_text("{}")
         typer.secho(f"Created empty timeline at {timelinePath}", fg=typer.colors.GREEN)
 
     mediaDir = vitDir / DEFAULT_CONFIG["mediaSubdir"]

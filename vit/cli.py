@@ -32,6 +32,7 @@ def test():
     """
     typer.secho(f"Test worked! Run vit init --help for a list of commands.", fg=typer.colors.GREEN)
 
+# FIXME: Guarantee this is atomic; i.e. the commit shouldn't go through if --attach has erroneous args 
 @app.command()
 def commit(
     message: str = typer.Option(..., "-m", help="Commit message"),
@@ -50,7 +51,6 @@ def commit(
     # Actually run git commit
     try:
         subprocess.run(["git", "commit", "-m", message], check=True)
-        # subprocess.run(f"git commit -m \"{message}\"".split(), check=True)
     except subprocess.CalledProcessError as e:
         typer.secho(f"Git commit failed: {e}", fg=typer.colors.RED)
         raise typer.Exit(code=1)
@@ -75,18 +75,15 @@ def commit(
     
     # Update the timeline
     timelinePath = config.storageDir / config.timelineFile
-    try:
-        timeline = json.loads(timelinePath.read_text())
-    except json.JSONDecodeError:
-        timeline = []
+    timelineData = {}
+    if timelinePath.exists():
+        timelineData = json.loads(timelinePath.read_text())
 
-    entry = {
-        "commit" : commitHash,
+    timelineData[commitHash] = {
         "attachments" : paths
     }
 
-    timeline.append(entry)
-    timelinePath.write_text(json.dumps(timeline, indent=2))
+    timelinePath.write_text(json.dumps(timelineData, indent=2))
     typer.secho(f"Updated timeline at {timelinePath}", fg=typer.colors.GREEN)
 
 @app.command()
@@ -105,10 +102,7 @@ def timeline(
 
     timelineData = {}
     if timelinePath.exists():
-        entries = json.loads(timelinePath.read_text())
-        timelineData = {
-            entry["commit"] : entry.get("attachments", []) for entry in entries
-        }
+        timelineData = json.loads(timelinePath.read_text())
     else:
         typer.secho(f"Failed to locate timeline path \"{timelinePath}\", have you run `vit init`?", fg=typer.colors.RED)
         raise typer.Exit(code=1)
@@ -133,7 +127,7 @@ def timeline(
         if parents.strip():
             typer.secho(f"Parent Commit(s): {parents[:7]}", fg=typer.colors.CYAN)
 
-        attachments = timelineData.get(hash, [])
+        attachments = timelineData.get(hash, {}).get("attachments", [])
         if attachments:
             typer.secho("Attachments:", fg=typer.colors.BLUE)
             for relPath in attachments:
@@ -186,10 +180,7 @@ def undo(
 
     timelineData = {}
     if timelinePath.exists():
-        entries = json.loads(timelinePath.read_text())
-        timelineData = {
-            entry["commit"] : entry.get("attachments", []) for entry in entries
-        }
+        timelineData = json.loads(timelinePath.read_text())
     else:
         typer.secho(f"Failed to locate timeline path, have you run `vit init`?", fg=typer.colors.RED)
         raise typer.Exit(code=1)
@@ -218,7 +209,7 @@ def undo(
         typer.secho("Aborted `vit undo`", fg=typer.colors.CYAN)
         raise typer.Exit(code=0)
     
-    for h in lastHashes:
+    # for h in lastHashes:
 
 @app.command()
 def modify():
