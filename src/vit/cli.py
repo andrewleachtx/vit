@@ -25,7 +25,7 @@ def init(
     except Exception as e:
         typer.secho(f"Failed to initialize vit: {e} -- are you inside a git repository?", fg=typer.colors.RED)
         raise typer.Exit(code=1)
-    
+
 @app.command()
 def test():
     """
@@ -138,6 +138,7 @@ def timeline(
                 typer.echo(f"\t- {linkText} ({fileUrl})")
         
         typer.echo()
+app.command("tl")(timeline)
 
 @app.command()
 def overhead():
@@ -233,14 +234,73 @@ def undo(
     timelinePath.write_text(json.dumps(timelineData, indent=2))
     typer.secho(f"Successfully deleted {number} commits.", fg=typer.colors.GREEN)
 
+# TODO: Should we make it so vit flushes empty json stuff when lighter commands are run?
 @app.command()
-def modify():
+def modify(
+    commithash: str = typer.Argument(
+        ..., help="The commit hash, either full or the prefix (first 7 digits)."
+    ),
+    attach: list[Path] = typer.Option(
+        [], "--attach", "-a", exists=True, file_okay=True, dir_okay=True,
+        help="Media files or dir to files to attach/insert to the given commitHash (i.e. --attach a.gif b.png c.mp4)"
+    ),
+    remove: list[Path] = typer.Option(
+        [], "--remove", "-r", exists=True, file_okay=True,
+        help="Media files to remove from the given commitHash (i.e. --remove a.gif)"
+    )
+):
     """
-    TODO:
+    Attach/detach images to/from an arbitrary commit.
+    """
+    config = loadConfig()
+    timelinePath = config.storageDir / config.timelineFile
+
+    timelineData = {}
+    if timelinePath.exists():
+        timelineData = json.loads(timelinePath.read_text())
+    else:
+        typer.secho(f"Failed to locate timeline path, have you run `vit init`?", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    mediaRoot = config.storageDir / config.mediaSubdir
+    commitDir = mediaRoot / commithash
+    commitDir.mkdir(parents=True, exist_ok=True)
     
-    Attach/detach images to an arbitrary commit. This will have to linear search for the correct spot in our json file,
-    which may be very slow as we don't store time.
-    """
+    existingAttachments = timelineData.get(commithash, {}).get("attachments", [])
+    for asset in remove:
+        target = commitDir / asset.name
+        relPath = str(Path(config.mediaSubdir) / commithash / asset.name)
+        if target.exists():
+            target.unlink()
+            typer.secho(f"Removed {relPath}", fg=typer.colors.YELLOW)
+            if relPath in existingAttachments:
+                existingAttachments.remove(relPath)
+        else:
+            typer.secho(f"Warning, could not find {relPath}", fg=typer.colors.RED)
+
+    for src in attach:
+        dst = commitDir / src.name
+        shutil.copy(src, dst)
+        relPath = str(Path(config.mediaSubdir) / commithash / src.name)
+        typer.secho(f"Attached {relPath}", fg=typer.colors.GREEN)
+        existingAttachments.append(relPath)
+
+    # At this point, there may be duplicates, so we can avoid those. I add as we traverse over using list(seen) to retain ordering.
+    seen = set()
+    dedupedAttachments = []
+    for path in existingAttachments:
+        if path not in seen:
+            seen.add(path)
+            dedupedAttachments.append(path)
+
+    # Update the timeline
+    timelineData[commithash] = {
+        "attachments" : dedupedAttachments
+    }
+
+    timelinePath.write_text(json.dumps(timelineData, indent=2))
+    typer.secho(f"Updated timeline at {timelinePath}", fg=typer.colors.GREEN)
+
 
 @app.command()
 def graph():
