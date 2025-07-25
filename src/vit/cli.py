@@ -2,7 +2,6 @@ from datetime import datetime
 import json
 import shutil
 import subprocess
-# from git import Repo
 import typer
 from vit.config import initConfig, loadConfig
 from pathlib import Path
@@ -29,7 +28,7 @@ def init(
     config = loadConfig()
     repoPath = config.repoPath
 
-    if typer.confirm("Would you like to add .vit/ to your .gitignore? It is recommended as it contains information about your machine filedata."):
+    if typer.confirm("Would you like to add .vit/ to your .gitignore? It is recommended as it contains your machine's local path info."):
         addToGitignore(repoPath)
 
 @app.command()
@@ -66,9 +65,6 @@ def commit(
         typer.secho(f"Git commit failed: {e}", fg=typer.colors.RED)
         raise typer.Exit(code=1)
     
-    # repo = Repo(config.repoPath)
-    # commitHash = repo.head.commit.hexsha[:7]
-    print(commitHash)
     typer.secho(f"Committed as {commitHash}", fg=typer.colors.GREEN)
 
     # Search for attachments and attach them
