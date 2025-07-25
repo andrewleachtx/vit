@@ -8,6 +8,7 @@ from vit.config import initConfig, loadConfig
 from pathlib import Path
 
 from vit.utils import makeClickableFileLink, getDirSize, bytesToHuman
+from vit.graph import launchGraph
 
 app = typer.Typer()
 
@@ -248,6 +249,7 @@ def graph():
 
     Visualizes timeline including commits not in timeline.json
     """
+    launchGraph()
 
 if __name__ == "__main__":
     app()

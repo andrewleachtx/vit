@@ -1,25 +1,23 @@
 [project]
 name = "vit"
 version = "0.1.0"
-description = ""
-authors = [
-    {name = "Andrew Leach", email = "you@example.com"}
-]
-license = "MIT"
+description = "A CLI tool for attaching visuals to git commits."
 readme = "README.md"
+authors = [
+    { name = "Andrew Leach" }
+]
 requires-python = ">=3.11"
 dependencies = [
-    "typer (>=0.16.0,<0.17.0)",
-    "gitpython (>=3.1.44,<4.0.0)",
-    "fastapi (>=0.116.1,<0.117.0)",
-    "jinja2 (>=3.1.6,<4.0.0)",
-    "uvicorn (>=0.35.0,<0.36.0)"
+    "fastapi>=0.116.1",
+    "gitpython>=3.1.45",
+    "jinja2>=3.1.6",
+    "typer>=0.16.0",
+    "uvicorn>=0.35.0",
 ]
 
-
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build>=0.8.3,<0.9.0"]
+build-backend = "uv_build"
 
-[tool.poetry.scripts]
+[project.scripts]
 vit = "vit.cli:app"
