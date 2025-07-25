@@ -2,12 +2,12 @@ from datetime import datetime
 import json
 import shutil
 import subprocess
-from git import Repo
+# from git import Repo
 import typer
 from vit.config import initConfig, loadConfig
 from pathlib import Path
 
-from vit.utils import makeClickableFileLink, getDirSize, bytesToHuman
+from vit.utils import makeClickableFileLink, getDirSize, bytesToHuman, addToGitignore
 from vit.graph import launchGraph
 
 app = typer.Typer()
@@ -25,6 +25,12 @@ def init(
     except Exception as e:
         typer.secho(f"Failed to initialize vit: {e} -- are you inside a git repository?", fg=typer.colors.RED)
         raise typer.Exit(code=1)
+    
+    config = loadConfig()
+    repoPath = config.repoPath
+
+    if typer.confirm("Would you like to add .vit/ to your .gitignore? It is recommended as it contains information about your machine filedata."):
+        addToGitignore(repoPath)
 
 @app.command()
 def test():
@@ -46,18 +52,23 @@ def commit(
 
     Simply copies attachments to ./vit/media/ and stores sparse metadata (commit & attachments)
     """
-    # Grab the config paths & media storage metadata
     config = loadConfig()
 
     # Actually run git commit
+    commitHash = ""
     try:
         subprocess.run(["git", "commit", "-m", message], check=True)
+        commitHash = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            text=True
+        ).strip()
     except subprocess.CalledProcessError as e:
         typer.secho(f"Git commit failed: {e}", fg=typer.colors.RED)
         raise typer.Exit(code=1)
     
-    repo = Repo(config.repoPath)
-    commitHash = repo.head.commit.hexsha[:7]
+    # repo = Repo(config.repoPath)
+    # commitHash = repo.head.commit.hexsha[:7]
+    print(commitHash)
     typer.secho(f"Committed as {commitHash}", fg=typer.colors.GREEN)
 
     # Search for attachments and attach them
@@ -225,7 +236,6 @@ def undo(
     mediaDir = config.storageDir / config.mediaSubdir
     for h in lastHashes:
         if h in timelineData:
-            h = "d2ac47a"
             folder = mediaDir / h
             if folder.exists():
                 shutil.rmtree(folder)

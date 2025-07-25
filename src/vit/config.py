@@ -3,6 +3,8 @@ import typer
 import json
 from types import SimpleNamespace
 
+from vit.utils import findGitRoot
+
 DEFAULT_CONFIG = {
     "repoPath" : "",
     "storageDir" : ".vit",
@@ -10,33 +12,19 @@ DEFAULT_CONFIG = {
     "timelineFile" : "timeline.json"
 }
 
-def findGitRoot() -> Path:
-    """
-    Walks up looking for a `.git` directory - the first one found is our projects "root" 
-    when vit init or other commands are used.
-    """
-
-    cur = Path.cwd()
-    while cur != cur.parent:
-        if (cur/".git").exists():
-            return cur
-        cur = cur.parent
-    raise RuntimeError("Could not find a Git repository")
-
 def initConfig(overwrite=False):
     """
-    Helper that initializes the config files (config.json and timeline.json) and
-    
+    Helper that initializes the config files (config.json and timeline.json) and directory structure.
     """
 
-    # 1) Search for the git project root
+    # Search for the git project root
     repoPath = findGitRoot()
 
-    # 2) Build the .vit/ directory at that location
+    # Build the .vit/ directory at that location
     vitDir = repoPath/DEFAULT_CONFIG["storageDir"]
     vitDir.mkdir(exist_ok=True)
 
-    # 3) Create the config.json with our default config
+    # Create the config.json with our default config
     configPath = vitDir / "config.json"
     configToWrite = {
         **DEFAULT_CONFIG,

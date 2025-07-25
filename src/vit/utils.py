@@ -1,6 +1,19 @@
 import os
 from pathlib import Path
 
+def findGitRoot() -> Path:
+    """
+    Walks up looking for a `.git` directory - the first one found is our projects "root" 
+    when vit init or other commands are used.
+    """
+
+    cur = Path.cwd()
+    while cur != cur.parent:
+        if (cur/".git").exists():
+            return cur
+        cur = cur.parent
+    raise RuntimeError("Could not find a Git repository")
+
 # https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda
 def makeClickableFileLink(text: str, url: str) -> str:
     """
@@ -31,3 +44,16 @@ def getDirSize(path: Path) -> int:
         nbytes += Path(root).stat().st_size
     
     return nbytes
+
+def addToGitignore(repoRoot: Path) -> None:
+    """
+    Helper that adds .vit/ to the .gitignore and creates it if not existing.
+    """
+    gitignore = repoRoot / ".gitignore"
+    if not gitignore.exists():
+        gitignore.write_text(".vit/\n")
+    else:
+        lines = gitignore.read_text().splitlines()
+        if ".vit/" not in lines:
+            with gitignore.open("a") as f:
+                f.write("\n.vit/\n")
