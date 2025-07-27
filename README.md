@@ -24,13 +24,16 @@ Now you should have the sdist and wheel in `dist/`. If you are using a virtual e
 ```
 python -m venv .venv
 source .venv/bin/activate
+pip install ./dist/vit-0.1.0-py3-none-any.whl
 ```
 
 The most plug and play approach is just installing somewhere your PATH has access:
 
 ```
-python -m pip install --user vit-0.1.0-py3-none-any.whl
+python -m pip install --user ./dist/vit-0.1.0-py3-none-any.whl
 ```
+
+Just make sure `$HOME/.local/bin` or `%APPDATA%\Python\...\Scripts` (on Windows) are on your PATH to use this in external repos.
 
 ## Usage
 Run `vit --help` to see the commands. They are meant to be adjacent to `git` commands.
