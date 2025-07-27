@@ -1,4 +1,0 @@
-
-
-def launchGraph() -> None:
-    pass

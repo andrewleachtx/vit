@@ -7,7 +7,6 @@ from vit.config import initConfig, loadConfig
 from pathlib import Path
 
 from vit.utils import makeClickableFileLink, getDirSize, bytesToHuman, addToGitignore
-from vit.graph import launchGraph
 
 app = typer.Typer()
 
@@ -306,16 +305,6 @@ def modify(
 
     timelinePath.write_text(json.dumps(timelineData, indent=2))
     typer.secho(f"Updated timeline at {timelinePath}", fg=typer.colors.GREEN)
-
-
-@app.command()
-def graph():
-    """
-    TODO:
-
-    Visualizes timeline including commits not in timeline.json
-    """
-    launchGraph()
 
 if __name__ == "__main__":
     app()
