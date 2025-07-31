@@ -52,6 +52,7 @@ def initConfig(overwrite=False):
             typer.secho(f"Backed up existing timeline to {backupTimeline}", fg=typer.colors.YELLOW)
         else:
             typer.secho(f"Already initialized at {timelinePath}, ignoring. Add --overwrite to delete your existing timeline data and reinit!", fg=typer.colors.YELLOW)
+            raise typer.Exit(code=1)
     if not timelinePath.exists() or overwrite:
         timelinePath.write_text("{}")
         typer.secho(f"Created empty timeline at {timelinePath}", fg=typer.colors.GREEN)

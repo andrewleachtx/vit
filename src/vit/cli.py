@@ -6,7 +6,7 @@ import typer
 from vit.config import initConfig, loadConfig
 from pathlib import Path
 
-from vit.utils import makeClickableFileLink, getDirSize, bytesToHuman, addToGitignore
+from vit.utils import getDirSize, bytesToHuman, addToGitignore
 
 app = typer.Typer()
 
@@ -139,9 +139,8 @@ def timeline(
             typer.secho("Attachments:", fg=typer.colors.BLUE)
             for relPath in attachments:
                 absPath = (config.storageDir / relPath).resolve()
-                fileUrl = f"file://{absPath}"
-                linkText = makeClickableFileLink(Path(relPath).name, fileUrl)
-                typer.echo(f"\t- {linkText} ({fileUrl})")
+                filename = Path(relPath).name
+                typer.echo(f"\t- {filename} ({absPath})")
         
         typer.echo()
 app.command("tl")(timeline)
