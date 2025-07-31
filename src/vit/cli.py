@@ -143,7 +143,7 @@ def timeline(
                 typer.echo(f"\t- {filename} ({absPath})")
         
         typer.echo()
-app.command("tl")(timeline)
+app.command("tl", hidden=True)(timeline)
 
 @app.command()
 def overhead():

@@ -27,7 +27,7 @@ source .venv/bin/activate
 pip install ./dist/vit-0.1.0-py3-none-any.whl
 ```
 
-The most plug and play approach is just installing somewhere your PATH has access:
+If you want plug and play, install with `--user` as your PATH likely has immediate access to your `site-packages`.
 
 ```
 python -m pip install --force-reinstall --user ./dist/vit-0.1.0-py3-none-any.whl
