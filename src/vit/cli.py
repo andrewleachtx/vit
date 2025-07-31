@@ -6,7 +6,7 @@ import typer
 from vit.config import initConfig, loadConfig
 from pathlib import Path
 
-from vit.utils import makeClickableFileLink, getDirSize, bytesToHuman, addToGitignore
+from vit.utils import getDirSize, bytesToHuman, addToGitignore
 
 app = typer.Typer()
 
@@ -139,12 +139,11 @@ def timeline(
             typer.secho("Attachments:", fg=typer.colors.BLUE)
             for relPath in attachments:
                 absPath = (config.storageDir / relPath).resolve()
-                fileUrl = f"file://{absPath}"
-                linkText = makeClickableFileLink(Path(relPath).name, fileUrl)
-                typer.echo(f"\t- {linkText} ({fileUrl})")
+                filename = Path(relPath).name
+                typer.echo(f"\t- {filename} ({absPath})")
         
         typer.echo()
-app.command("tl")(timeline)
+app.command("tl", hidden=True)(timeline)
 
 @app.command()
 def overhead():
@@ -257,6 +256,11 @@ def modify(
     """
     Attach/detach images to/from an arbitrary commit.
     """
+
+    if not attach and not remove:
+        typer.secho(f"Please provide an attachment(s) or removal(s) to go with the modification!", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
     config = loadConfig()
     timelinePath = config.storageDir / config.timelineFile
 
@@ -265,6 +269,13 @@ def modify(
         timelineData = json.loads(timelinePath.read_text())
     else:
         typer.secho(f"Failed to locate timeline path, have you run `vit init`?", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    
+    try:
+        subprocess.run(["git", "rev-parse", "--verify", f"{commithash}^{{commit}}"],
+                       cwd=config.repoPath, check=True)
+    except:
+        typer.secho(f"The commit hash {commithash} was not found!", fg=typer.colors.RED)
         raise typer.Exit(code=1)
 
     mediaRoot = config.storageDir / config.mediaSubdir
