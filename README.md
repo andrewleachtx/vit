@@ -30,8 +30,10 @@ pip install ./dist/vit-0.1.0-py3-none-any.whl
 The most plug and play approach is just installing somewhere your PATH has access:
 
 ```
-python -m pip install --user ./dist/vit-0.1.0-py3-none-any.whl
+python -m pip install --force-reinstall --user ./dist/vit-0.1.0-py3-none-any.whl
 ```
+
+You don't need `--force-reinstall` on fresh, but if the script updates you should use this.
 
 Just make sure `$HOME/.local/bin` or `%APPDATA%\Python\...\Scripts` (on Windows) are on your PATH to use this in external repos.
 
