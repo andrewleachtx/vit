@@ -1,47 +1,71 @@
 # vit
-A CLI tool for attaching visuals to git commits.
 
-## Compatibility
-Runs on Windows and Linux (without rigorous testing), **may** work with macOS.
+vit is a minimal CLI tool for attaching visuals to Git commits. It is read-only on your Git history; vit cannot change anything related to your Git commits or tracked files.
 
-## Dependencies
-[uv](https://docs.astral.sh/uv/getting-started/installation/) and `python>=3.11`.
+I felt like I wanted to record the visual improvements my commits were making where they existed in my graphics work, so I made this tool.
 
-uv is very fast, it dropped command runtime from 0.5s -> 0.1s. Hence why I am using it over `poetry`.
-
-uv will just install the needed packages, but if you would like, see the `pyproject.toml` for exacts.
+Vit requires you are in a Git repository, and stores itself purely locally copies in `.git/vit/` - the cost of storage you pay is up to how much you would like to track!
 
 ## Installation
-In project root:
+
+The planned Homebrew package is `vit-cli`. Installation instructions will be added here when the release is available. The command you run stays `vit`:
 
 ```bash
-uv lock && uv sync
-uv build
+vit attach render.png
+vit show
 ```
 
-Now you should have the sdist and wheel in `dist/`. If you are using a virtual env, you should run:
+## Attach and show
 
-```
-python -m venv .venv
-source .venv/bin/activate
-pip install ./dist/vit-0.1.0-py3-none-any.whl
-```
+From any Git repository with at least one commit:
 
-If you want plug and play, install with `--user` as your PATH likely has immediate access to your `site-packages`.
-
-```
-python -m pip install --force-reinstall --user ./dist/vit-0.1.0-py3-none-any.whl
+```bash
+vit attach render.png
+vit attach comparison.gif demo.mp4
+vit show
 ```
 
-You don't need `--force-reinstall` on fresh, but if the script updates you should use this.
+Both commands use your latest commit (`HEAD`) by default. To choose an older commit, supply its full hash or a unique prefix:
 
-Just make sure `$HOME/.local/bin` or `%APPDATA%\Python\...\Scripts` (on Windows) are on your PATH to use this in external repos.
+```bash
+vit attach render.png comparison.gif --hash a83f4c2
+vit show --hash a83f4c2
+```
 
-## Usage
-Run `vit --help` to see the commands. They are meant to be adjacent to `git` commands.
+`vit show` lists the saved files, with clickable names in terminals that support links. When redirected, it includes file URLs you can open or copy.
 
-Meant to integrate with existing git repos, so only run `vit init` where repositories exist.
+## Example
+
+```bash
+git add src/
+git commit -m "Increase epsilon for shadow acne"
+
+vit attach reflection.png demo.mp4
+vit show
+```
+
+vit keeps its own copies locally within the `.git/`
+
+Attaching the same filename and contents again safely skips that file. To attach a different file with the same name, rename it first. If any file is missing or conflicts with an existing attachment, none of the requested files are attached.
+
+Run `vit --help` or `vit attach --help` for command help.
+
+## Development
+
+You will need [uv](https://docs.astral.sh/uv/). It manages the development interpreter and dependencies:
+
+```bash
+git clone https://github.com/andrewleachtx/vit.git
+cd vit
+uv sync
+uv run pytest
+uv run vit --help
+```
+
+Use `uv run vit attach <file>` to test any of your local dev changes. Build a distribution with `uv build`.
+
+Python 3.11 or newer is supported. The CLI uses only the Python standard library at runtime.
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE.md](LICENSE.md) for more details.
+[MIT](LICENSE.md)

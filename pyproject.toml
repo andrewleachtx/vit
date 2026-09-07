@@ -1,22 +1,23 @@
 [project]
 name = "vit"
-version = "0.1.0"
+version = "0.2.0"
 description = "A CLI tool for attaching visuals to git commits."
 readme = "README.md"
 authors = [
     { name = "Andrew Leach" }
 ]
 requires-python = ">=3.11"
-dependencies = [
-    "fastapi>=0.116.1",
-    "jinja2>=3.1.6",
-    "pip>=25.2",
-    "typer>=0.16.0",
-]
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=8.3,<9"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [build-system]
 requires = ["uv_build>=0.8.3,<0.9.0"]
 build-backend = "uv_build"
 
 [project.scripts]
-vit = "vit.cli:app"
+vit = "vit.cli:main"
