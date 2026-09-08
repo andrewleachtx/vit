@@ -16,13 +16,20 @@ import uuid
 
 from vit.errors import VitError
 
-
+# Turns our generator into something you can use with 'with'
 @contextmanager
 def writer_lock(path: Path):
-    # Keep the lock file in place: unlinking it can let writers lock different
-    # inodes. OS locks are released even when a process crashes.
+    """
+    Grab the file descriptor from path.open("a+b") (append r/w binary) and try to acquire a lock
+    on that file descriptor based on OS.
+
+    If we acquire, we yield to the caller and they continue from there, while the lock is still in scope.
+
+    After the caller downstream exits, we issue a LOCK_UN to release the lock and exit.
+    """
     with path.open("a+b") as handle:
         try:
+            # Windows NT uses msvcrt.locking() while macOS/Linux use fcntl.flock()
             if os.name == "nt":
                 import msvcrt
 
@@ -35,9 +42,12 @@ def writer_lock(path: Path):
             else:
                 import fcntl
 
+                # Acquire an exclusive lock and error if another writer is holding it, do not wait (no block)
                 fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError:
             raise VitError("another vit attachment is in progress; try again shortly") from None
+
+        # If we successfully locked, we can yield to the caller's 'with' block while we own the file descriptor lock still in scope here
         try:
             yield
         finally:
@@ -54,6 +64,7 @@ class ArtifactStore:
         self.root = common_dir / "vit"
 
     def _read(self, commit: str) -> list[dict[str, str]]:
+        # Look for .git/vit/<full-commit-hash>.json manifest and return its list of all dicts (one dict per attachment)
         manifest = self.root / f"{commit}.json"
         if not manifest.exists():
             return []
@@ -99,33 +110,49 @@ class ArtifactStore:
             staging = Path(temporary)
             batch = staging / "files"
             batch.mkdir()
-            prepared = []
+            
+            proposed_entries = []
             for index, source in enumerate(sources):
                 destination = batch / str(index) / source.name
                 destination.parent.mkdir()
                 shutil.copyfile(source, destination)
+
+                # Grab a unique digest hash for filename + fingerprint to avoid dupes later
                 with destination.open("rb") as handle:
                     digest = hashlib.file_digest(handle, "sha256").hexdigest()
-                prepared.append((source.name, digest, destination.relative_to(batch)))
+                proposed_entries.append((source.name, digest, destination.relative_to(batch)))
 
+            # Acquire a lock around the common directory to write a new manifest.json for this commit - we copy all previous entries in a commit's attachment.
+            # this is a bit of a n^2 operation because technically we don't append in place, we copy previous metadata (not entries!) into memory here and
+            # add in the proposed set
             with writer_lock(self.common_dir / "vit.lock"):
-                entries = self._read(commit)
-                known = {entry["name"]: entry["sha256"] for entry in entries}
+                # This commit can have entries already associated. We need to merge in the new ones while avoiding duplicates
+                existing_entries = self._read(commit)
+
+                # Python upserts by default, but we know that entries for the existing commit would have already handled that case, so no dupes can happen here
+                known = {entry["name"]: entry["sha256"] for entry in existing_entries}
                 added, skipped = [], []
                 batch_id = uuid.uuid4().hex
                 target = self.root / "batches" / batch_id
-                for name, digest, relative in prepared:
+
+                # For each proposed entry filename, hash, and relative path add where possible
+                for name, digest, relative in proposed_entries:
                     if name in known:
+                        # If we have a dupe filename, but it has the same file contents, we have to raise an error. Otherwise skip and use the first seen file as it is a true dupe
                         if known[name] != digest:
                             raise VitError(f'a different file named "{name}" is already attached or requested; rename the new file and try again')
                         if name not in added and name not in skipped:
                             skipped.append(name)
+
+                        # Remove the dupe's temporary copy for this file
                         (batch / relative).unlink()
                         (batch / relative).parent.rmdir()
                         continue
+
+                    # Otherwise, record the filename and hash and append to existing_entries for the updated manifest.
                     known[name] = digest
                     added.append(name)
-                    entries.append({
+                    existing_entries.append({
                         "name": name,
                         "sha256": digest,
                         "path": (Path("batches") / batch_id / relative).as_posix(),
@@ -133,11 +160,14 @@ class ArtifactStore:
                 if not added:
                     return added, skipped
 
+                # Create the manifest file within the temp staging location and dump to it
                 manifest = staging / "manifest.json"
                 with manifest.open("w", encoding="utf-8") as handle:
-                    json.dump({"version": 1, "attachments": entries}, handle, indent=2)
+                    json.dump({"version": 1, "attachments": existing_entries}, handle, indent=2)
                     handle.flush()
                     os.fsync(handle.fileno())
+
+                # Create a permanent storage and move temp to there
                 try:
                     target.parent.mkdir(parents=True, exist_ok=True)
                     os.replace(batch, target)
@@ -145,13 +175,14 @@ class ArtifactStore:
                 except OSError:
                     if target.exists():
                         shutil.rmtree(target)
-                    # Remove newly created, empty directories after failure.
+                    # Remove newly created, empty directories after failure
                     for directory in (target.parent, self.root):
                         try:
                             directory.rmdir()
                         except OSError:
                             pass
                     raise
+                
                 # An asynchronous interruption must not delete the batch: the
-                # manifest replacement may already have committed the operation.
+                # manifest replacement may already have committed the operation
                 return added, skipped
