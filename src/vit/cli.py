@@ -37,8 +37,11 @@ def main(argv: list[str] | None = None) -> int:
     try:
         # Look for our git/vit repository, exit if git throws "fatal: not a git repository (or any of the parent directories): .git"
         repository = Repository(Path.cwd())
+
+        # If it exists, try grabbing the full commit (otherwise head)
         commit = repository.git.resolve(args.commit_hash)
         label = f'{commit.short_hash} "{readable(commit.subject)}"'
+
         if args.command == "attach":
             added, skipped = repository.attach(commit, args.files)
             if added:
